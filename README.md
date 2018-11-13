@@ -1,2 +1,3 @@
-# NewsRS
-News Recommendation System
+# NewsRS: News Recommendation System
+
+
