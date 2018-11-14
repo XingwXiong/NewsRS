@@ -9,10 +9,8 @@ import pandas as pd
 import numpy as np
 import re
 import sys
-import gensim
-from sklearn.decomposition import NMF
 
-path=''
+path='../../data/'
 #用户编号,新闻编号,浏览时间,新闻标题,新闻详细内容,新闻发表时间
 data = pd.read_csv(path+'user_click_data.txt',encoding='utf-8',delimiter="\t",
                    names=["usr_id", "news_id", "scan_time","news_title"
