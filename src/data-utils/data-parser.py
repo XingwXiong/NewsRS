@@ -6,7 +6,7 @@ Created on Tue Nov 13 18:34:08 2018
 """
 import pandas as pd
 import numpy as np
-import re, sys, os
+import re, sys, os, multiprocessing
 import jieba
 import gensim
 from gensim.models import Word2Vec, Doc2Vec
@@ -143,7 +143,7 @@ if not os.path.exists('%s/data/news_word.model'%root_dir) or \
     '''
     logging.info('start doc2vec')
     doc_sentences=NewsDocSentences(pd.DataFrame({'news_id':news_data['news_id'], 'news_text':news_text}))
-    doc_model=Doc2Vec(doc_sentences, size = 100, window = 5, min_count=1)
+    doc_model=Doc2Vec(doc_sentences, size = 100, window = 5, min_count=1, workers=multiprocessing.cpu_count())
     doc_model.save('%s/data/news_doc.model'%root_dir)
 '''
 word_model=Word2Vec.load('%s/data/news_word.model'%root_dir)
