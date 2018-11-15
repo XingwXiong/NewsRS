@@ -135,19 +135,18 @@ class NewsDocSentences(object):
 if not os.path.exists('%s/data/news_word.model'%root_dir) or \
     not os.path.exists('%s/data/news_doc.model'%root_dir):
     news_text=(news_data['word_title']+news_data['word_content']).astype(str)
-    '''
-        logging.info("start word2vec")
-        word_sentences=NewsWordSentences(news_text)
-        word_model=Word2Vec(word_sentences)
-        word_model.save('%s/data/news_word.model'%root_dir)
-    '''
+    
+    logging.info("start word2vec")
+    word_sentences=NewsWordSentences(news_text)
+    word_model=Word2Vec(word_sentences)
+    word_model.save('%s/data/news_word.model'%root_dir)
+
     logging.info('start doc2vec')
     doc_sentences=NewsDocSentences(pd.DataFrame({'news_id':news_data['news_id'], 'news_text':news_text}))
-    doc_model=Doc2Vec(doc_sentences, size = 100, window = 5, min_count=1, workers=multiprocessing.cpu_count())
+    doc_model=Doc2Vec(doc_sentences, vector_size = 100, window = 5, min_count = 3, max_vocab_size = 50000, workers=multiprocessing.cpu_count())
     doc_model.save('%s/data/news_doc.model'%root_dir)
-'''
+
 word_model=Word2Vec.load('%s/data/news_word.model'%root_dir)
-'''
 doc_model=Doc2Vec.load('%s/data/news_doc.model'%root_dir)
 logging.info('news.model loaded')
 
