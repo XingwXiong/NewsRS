@@ -40,6 +40,8 @@ test_original=data[data["scan_time"]>=divide_time]
 train_data=train_original[~train_original["news_title"].str.contains('404')]
 test_data=test_original[~test_original["news_title"].str.contains('404')]
 
+
+
 data_404=data[data["news_title"].str.contains('404')]
 #print(data_404)
 train_original.to_csv("train_original.csv", index=False)

@@ -1,4 +1,3 @@
-user_click_data*.txt
-
+user_click_data.txt
 train_original.csv
-train.csv
+train_jieba.csv
