@@ -148,6 +148,6 @@ if not os.path.exists('%s/data/news_word.model'%root_dir) or \
 '''
 word_model=Word2Vec.load('%s/data/news_word.model'%root_dir)
 '''
-doc_model=Word2Vec.load('%s/data/news_doc.model'%root_dir)
+doc_model=Doc2Vec.load('%s/data/news_doc.model'%root_dir)
 logging.info('news.model loaded')
 
