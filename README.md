@@ -12,7 +12,7 @@ $ cd data; tar xzf user_click_data.tar.gz
 ```
 
 
-## Classification
+### Classification
 
 - `data/news_vector.csv`: document(news) embeddings;
 - `data/usr_vector.csv`: the avg news vector; 
