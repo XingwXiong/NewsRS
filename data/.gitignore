@@ -1,3 +1,7 @@
 user_click_data.txt
 train_original.csv
 train_jieba.csv
+
+news_doc.model
+news_doc.model.docvecs.vectors_docs.npy
+news_doc.model.trainables.vectors_docs_lockf.npy
