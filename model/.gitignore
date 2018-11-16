@@ -1,0 +1,5 @@
+
+news_word.model
+news_doc.model
+news_doc.model.docvecs.vectors_docs.npy
+news_doc.model.trainables.vectors_docs_lockf.npy

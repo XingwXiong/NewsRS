@@ -132,31 +132,34 @@ class NewsDocSentences(object):
             yield gensim.models.doc2vec.LabeledSentence(words=line['news_text'].split(),
                     tags=[line['news_id']])
 
-if not os.path.exists('%s/data/news_word.model'%root_dir) or \
-    not os.path.exists('%s/data/news_doc.model'%root_dir):
-    news_text=(news_data['word_title']+news_data['word_content']).astype(str)
+news_text=(news_data['word_title']+news_data['word_content']).astype(str)
+if not os.path.exists('%s/model/news_word.model'%root_dir) or \
+    not os.path.exists('%s/model/news_doc.model'%root_dir):
     
     logging.info("start word2vec")
     word_sentences=NewsWordSentences(news_text)
     word_model=Word2Vec(word_sentences)
-    word_model.save('%s/data/news_word.model'%root_dir)
+    word_model.save('%s/model/news_word.model'%root_dir)
 
     logging.info('start doc2vec')
     doc_sentences=NewsDocSentences(pd.DataFrame({'news_id':news_data['news_id'], 'news_text':news_text}))
     #doc_model=Doc2Vec(doc_sentences, vector_size = 50, window = 5, min_count = 5, max_vocab_size = 10000, workers=multiprocessing.cpu_count())
     doc_model=Doc2Vec(doc_sentences, vector_size = 100, window = 5, min_count = 1, max_vocab_size = 50000, workers=multiprocessing.cpu_count())
-    doc_model.save('%s/data/news_doc.model'%root_dir)
+    doc_model.save('%s/model/news_doc.model'%root_dir)
     # If you’re finished training a model (=no more updates, only querying, reduce memory usage), you can do:
     doc_model.delete_temporary_training_data(keep_doctags_vectors=True, keep_inference=True)
 
-word_model=Word2Vec.load('%s/data/news_word.model'%root_dir)
-doc_model=Doc2Vec.load('%s/data/news_doc.model'%root_dir)
-logging.info('news.model loaded')
+if not os.path.exists('%s/data/news_vector.csv'%root_dir):
 
-logging.info('build document vector')
-def get_vector(line):
-    return doc_model[line]
+    word_model=Word2Vec.load('%s/model/news_word.model'%root_dir)
+    doc_model=Doc2Vec.load('%s/model/news_doc.model'%root_dir)
+    logging.info('news.model loaded')
 
-news_data['news_vector']=news_data["news_id"].apply(get_vector)
-news_data.drop(["word_title", "word_content"], axis=1, inplace=True)
-new_data.to_csv('%s/data/news_vector.csv'%root_dir, index=False)
+    logging.info('start building document vector')
+
+    def get_vector(line):
+        return doc_model.infer_vector(line.split())
+
+    news_data['news_vector']=news_text.astype(str).apply(get_vector)
+    news_data.drop(["word_title", "word_content", "publish_time"], axis=1, inplace=True)
+    news_data.to_csv('%s/data/news_vector.csv'%root_dir, index=False)
