@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
+'''
 Created on Tue Nov 13 18:34:08 2018
+Author: 温旭, Xingwang Xiong
 
-@author: 温旭, Xingwang Xiong
-"""
+'''
+
 import pandas as pd
 import numpy as np
 import re, sys, os, multiprocessing
@@ -55,11 +56,6 @@ if not os.path.exists('%s/data/train_original.csv'%root_dir) or \
     _404_original.to_csv('%s/data/404_original.csv'%root_dir, index=False)
     news_original.to_csv('%s/data/news_original.csv'%root_dir, index=False)
 
-train_data=pd.read_csv('%s/data/train_original.csv'%root_dir)
-test_data=pd.read_csv('%s/data/test_original.csv'%root_dir)
-news_data=pd.read_csv('%s/data/news_original.csv'%root_dir)
-
-logging.info('original data loaded!')
 
 '''
 数据清洗+jieba分词
@@ -80,6 +76,11 @@ def cutword(line):
 if not os.path.exists('%s/data/%s.csv'%(root_dir, 'train_jieba')) or \
     not os.path.exists('%s/data/%s.csv'%(root_dir, 'test_jieba')) or \
     not os.path.exists('%s/data/%s.csv'%(root_dir, 'news_jieba')):
+    logging.info('start loading original data')
+    train_data=pd.read_csv('%s/data/train_original.csv'%root_dir)
+    test_data=pd.read_csv('%s/data/test_original.csv'%root_dir)
+    news_data=pd.read_csv('%s/data/news_original.csv'%root_dir)
+
     #删掉404的行（标题404的内容一定NULL,内容或时间出现NULL的可以用）
     train_data=train_data[~train_data["news_title"].str.contains('404')]
     test_data=test_data[~test_data["news_title"].str.contains('404')]
@@ -106,40 +107,41 @@ if not os.path.exists('%s/data/%s.csv'%(root_dir, 'train_jieba')) or \
     test_data.iloc[:, 0:2].to_csv('%s/data/test_jieba.csv'%root_dir, index=False)
     news_data.to_csv('%s/data/news_jieba.csv'%root_dir, index=False)
 
-#train_data=pd.read_csv('%s/data/%s.csv'%(root_dir, 'train_jieba'))
-news_data=pd.read_csv('%s/data/%s.csv'%(root_dir, 'news_jieba'))
-logging.info('news_jieba.csv loaded')
 
 '''
-    Word2Vec 讲分词结果转为词向量
-    Word2Vec 讲分词结果转为词向量
+    Word2Vec    将分词结果转为词向量
+    Doc2Vec     将分词结果转为句向量
 '''
 
-class NewsWordSentences(object):
-    def __init__(self, data):
-        self.data = data
-
-    def __iter__(self):
-        for line in self.data:
-            yield line.split()
-
-class NewsDocSentences(object):
-    def __init__(self, data):
-        self.data = data.head()
-
-    def __iter__(self):
-        for index,line in self.data.iterrows():
-            yield gensim.models.doc2vec.LabeledSentence(words=line['news_text'].split(),
-                    tags=[line['news_id']])
-
-news_text=(news_data['word_title']+news_data['word_content']).astype(str)
 if not os.path.exists('%s/model/news_word.model'%root_dir) or \
     not os.path.exists('%s/model/news_doc.model'%root_dir):
+
+    logging.info('start loading news_jieba.csv')
+    #train_data=pd.read_csv('%s/data/%s.csv'%(root_dir, 'train_jieba'))
+    news_data=pd.read_csv('%s/data/%s.csv'%(root_dir, 'news_jieba'))
     
+    class NewsWordSentences(object):
+        def __init__(self, data):
+            self.data = data
+
+        def __iter__(self):
+            for line in self.data:
+                yield line.split()
+
     logging.info("start word2vec")
+    news_text=(news_data['word_title']+news_data['word_content']).astype(str)
     word_sentences=NewsWordSentences(news_text)
     word_model=Word2Vec(word_sentences)
     word_model.save('%s/model/news_word.model'%root_dir)
+
+    class NewsDocSentences(object):
+        def __init__(self, data):
+            self.data = data.head()
+
+        def __iter__(self):
+            for index,line in self.data.iterrows():
+                yield gensim.models.doc2vec.LabeledSentence(words=line['news_text'].split(),
+                        tags=[line['news_id']])
 
     logging.info('start doc2vec')
     doc_sentences=NewsDocSentences(pd.DataFrame({'news_id':news_data['news_id'], 'news_text':news_text}))
@@ -150,16 +152,44 @@ if not os.path.exists('%s/model/news_word.model'%root_dir) or \
     doc_model.delete_temporary_training_data(keep_doctags_vectors=True, keep_inference=True)
 
 if not os.path.exists('%s/data/news_vector.csv'%root_dir):
-
-    word_model=Word2Vec.load('%s/model/news_word.model'%root_dir)
+    logging.info('start loading news_jieba.csv')
+    news_data=pd.read_csv('%s/data/%s.csv'%(root_dir, 'news_jieba'))
+    #word_model=Word2Vec.load('%s/model/news_word.model'%root_dir)
     doc_model=Doc2Vec.load('%s/model/news_doc.model'%root_dir)
-    logging.info('news.model loaded')
+    logging.info('news_doc.model was loaded')
 
-    logging.info('start building document vector')
+    logging.info('start building news vector')
+    d_news_vec = {}
+    for i, x in news_data.iterrows():
+        text = str(x['word_title']) + str(x['word_content']) 
+        d_news_vec[x['news_id']] = doc_model.infer_vector(text.split())
+    news_vecs = pd.DataFrame.from_dict(d_news_vec)
+    news_vecs.to_csv('%s/data/news_vector.csv'%root_dir, index=False)
 
-    def get_vector(line):
-        return doc_model.infer_vector(line.split())
+# Desciption: Get user vector
+if not os.path.exists('%s/data/usr_vector.csv'%root_dir):
+    logging.info('start loading news_vector.csv')
+    news_vecs = pd.read_csv('%s/data/news_vector.csv'%root_dir)
+    logging.info('news_vector.csv was loaded! ' + str(news_vecs.shape))
 
-    news_data['news_vector']=news_text.astype(str).apply(get_vector)
-    news_data.drop(["word_title", "word_content", "publish_time"], axis=1, inplace=True)
-    news_data.to_csv('%s/data/news_vector.csv'%root_dir, index=False)
+    logging.info('start loading train_jieba.csv')
+    train_data=pd.read_csv('%s/data/%s.csv'%(root_dir, 'train_jieba'))
+    d_usr_vec = {}
+    d_usr_cnt = {}
+    for i, x in train_data.iterrows():
+        news_id = str(x['news_id'])
+        usr_id = str(x['usr_id'])
+        if not usr_id.isdigit():
+            logging.warning(x)
+        if usr_id not in d_usr_vec.keys():
+            d_usr_vec[usr_id] = news_vecs[news_id]
+            d_usr_cnt[usr_id] = 1
+        else:
+            d_usr_vec[usr_id] = (news_vecs[news_id] + \
+                    d_usr_vec[usr_id] * d_usr_cnt[usr_id]) / (d_usr_cnt[usr_id] + 1)
+            d_usr_cnt[usr_id] = d_usr_cnt[usr_id] + 1
+
+    usr_vecs = pd.DataFrame.from_dict(d_usr_vec)
+    logging.info('usr_vector.csv outputting ' + str(usr_vecs.shape))
+    usr_vecs.to_csv('%s/data/%s'%(root_dir, 'usr_vector.csv'), index=False)
+
