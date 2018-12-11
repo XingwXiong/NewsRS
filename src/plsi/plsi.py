@@ -21,13 +21,17 @@ def to_matrix(df):
     df["news_id"] = le_news.transform(df["news_id"])
     for row in df.itertuples(index=True, name='Pandas'):
         matrix[row[1], row[2]] += 1
-    np.save("user_news", matrix)
     return matrix
 
 class RecNews:
 
-    def __init__(self, k_total):
+    def __init__(self, k_total, k_old_new, k_hot_new, k_old, k_hot, base):
         self.k_total = k_total
+        self.k_old_new = k_old_new
+        self.k_hot_new = min(k_hot_new, self.k_total-k_old_new)
+        self.k_old = k_old
+        self.k_hot = min(k_old, self.k_total - k_old)
+        self.base = base    # 1-title 2-content
 
     def prepare(self):
         # train user-news matrix
@@ -42,9 +46,10 @@ class RecNews:
         self.df_train_news.sort_values(inplace=True)
         self.df_train_news.reset_index(drop=True, inplace=True)
         self.df_train_news.to_csv('train_news_id.csv', index=False)
-        train_matrix = to_matrix(self.df_train)
         self.df_u = pd.read_csv('train_users_id.csv', names=['id'])
         self.df_u.sort_values(inplace=True, by=['id'])
+        train_matrix = to_matrix(self.df_train)
+        np.save("train_user_news", train_matrix)
 
         # calculate news click history
         train_news_click = train_matrix.sum(axis=0)
@@ -66,7 +71,6 @@ class RecNews:
         nmf_known_result = reconstruct_matrix * filter_known_matrix
         np.save('nmf_result', nmf_result)
         np.save('nmf_known_result', nmf_known_result)
-        # print(nmf_known_result.shape)
         return (nmf_result, nmf_known_result)
 
     def rec_based_on_title(self, df_train_title, df_test_title):
@@ -74,26 +78,20 @@ class RecNews:
         corpora_documents = df_train_title['word_title'].values.tolist()
         corpora_documents = [[j for j in i.split(' ')] for i in corpora_documents]
 
-        # 生成字典和向量语料
         dictionary = corpora.Dictionary(corpora_documents)
         dictionary.save('dictionary.txt')  # 保存生成的词典
         # dictionary = corpora.Dictionary.load('dictionary.txt')#加载
-        # 得到语料中每一篇文档对应的稀疏向量（这里是bow向量）
         corpus = [dictionary.doc2bow(text) for text in corpora_documents]
-        # 向量的每一个元素代表了一个word在这篇文档中出现的次数
         corpora.MmCorpus.serialize('corpuse.mm', corpus)  # 保存生成的语料
         corpus=corpora.MmCorpus('corpuse.mm')#加载
 
-        # corpus是一个返回bow向量的迭代器
         tfidf_model = models.TfidfModel(corpus)
         tfidf_model.save('tfidf_model.tfidf')
         # tfidf_model = models.TfidfModel.load("tfidf_model.tfidf")
 
-        # 完成对corpus中出现的每一个特征的Iself.df值的统计工作
         corpus_tfidf = tfidf_model[corpus]
         corpus_tfidf.save("data.tfidf")
 
-        # 计算相似度
         similarity = similarities.MatrixSimilarity(corpus_tfidf)
         similarity.save('similarity.index')
         # similarity = similarities.Similarity.load('similarity.index')
@@ -112,19 +110,19 @@ class RecNews:
         return test_similarity
 
     def hit(self, test_matrix, predict_matrix):
+        print('max:{},mean:{}'.format(predict_matrix.max(),predict_matrix.mean()))
         score = np.count_nonzero(test_matrix * predict_matrix)
-
         return score
 
-    def rec_based_on_hot(self, k_old, k_hot, sim_news_hot):
+    def rec_based_on_hot(self, sim_news_hot):
         rec_list = []
-        rec_list_old = self.df_train_news_click.head(k_old)['news_id']  # news_id
+        rec_list_old = self.df_train_news_click.head(self.k_old_new)['news_id']  # news_id
         rec_list.extend(rec_list_old)
         # new news
-        df_sim_list = self.df_train_news_click.head(k_hot)
-        n_new_per_old = int((self.k_total - k_old) / k_hot)
+        df_sim_list = self.df_train_news_click.head(self.k_hot_new)
+        n_new_per_old = int((self.k_total - self.k_old_new) / self.k_hot_new)
         rec_list_new = []
-        for i in range(k_hot-1):
+        for i in range(self.k_hot_new-1):
             index = df_sim_list.index[i]    # le 热门新闻
             df_new_on_hot = pd.DataFrame([x for x in sim_news_hot[index][:n_new_per_old]], columns=['index', 'similarity'])
             df_new_on_hot.sort_values(by=['similarity'], inplace=True)
@@ -132,9 +130,9 @@ class RecNews:
             for l in range(min(n_hot,n_new_per_old)):
                 rec_list_new.append(self.df_test_news_id.news_id[df_new_on_hot.index[l]])    # news_id
 
-        i = k_hot-1
+        i = self.k_hot_new-1
         index = df_sim_list.index[i]
-        n_new_per_old = self.k_total - k_old - len(rec_list_new)
+        n_new_per_old = self.k_total - self.k_old_new - len(rec_list_new)
         df_new_on_hot = pd.DataFrame([x for x in sim_news_hot[index][:n_new_per_old]], columns=['index', 'similarity'])
         df_new_on_hot.sort_values(by=['similarity'], inplace=True)
         for l in range(n_new_per_old):
@@ -143,18 +141,26 @@ class RecNews:
 
         return rec_list
 
-    def recommendation(self, base=1):
-        # para:
-        #   base: train text data; 1 title, 2 content
+    def train(self):
 
         # get train news cut by jieba
-        self.df_train_title = pd.read_csv('%s/data/%s' % (root_dir, 'train_jieba.csv'), encoding='utf-8', usecols=[1, base+2])
+        self.df_train_title = pd.read_csv('%s/data/%s' % (root_dir, 'train_jieba.csv'), encoding='utf-8',
+                                          usecols=[1, self.base + 2])
         self.df_train_title.drop_duplicates(inplace=True, keep='first')
         self.df_train_title.sort_values(by='news_id', inplace=True)
         self.df_train_title.reset_index(inplace=True)
+        self.df_train_title.to_csv('train_title.csv', index=False)
+
+        # nmf data preparation
+        self.train_matrix = self.prepare()
+
+    def recommendation(self):
+
+        self.train()
+
         # get test set
         self.df_test = pd.read_csv('%s/data/%s' % (root_dir, 'test_jieba.csv'), encoding='utf-8')
-        self.df_news = pd.read_csv('%s/data/%s' % (root_dir, 'news_jieba.csv'), encoding='utf-8', usecols=[0, base])
+        self.df_news = pd.read_csv('%s/data/%s' % (root_dir, 'news_jieba.csv'), encoding='utf-8', usecols=[0, self.base])
         self.df_test_news_id = (self.df_test.copy())['news_id']
         self.df_test_news_id = pd.DataFrame(self.df_test_news_id, columns=['news_id'])
         self.df_test_news_id.drop_duplicates(keep='first', inplace=True)
@@ -163,11 +169,7 @@ class RecNews:
         self.df_test_news_id.to_csv('test_news_id.csv', index=False)
         self.df_test_title = pd.merge(self.df_test_news_id, self.df_news, how='left')
 
-        # rec new news
-        # sim_news_rec = self.rec_based_on_title()
-        sim_news_hot = self.rec_based_on_title(self.df_test_title, self.df_train_title)
-
-        # predict to all test user
+        # matrix: all test user - all test news
         self.df_test_user = ((self.df_test.copy())['usr_id'])
         self.df_test_user.drop_duplicates(keep='first', inplace=True)
         self.df_test_user.sort_values(inplace=True)
@@ -178,54 +180,59 @@ class RecNews:
         predict_matrix = np.zeros((n_test_user, n_test_news))
 
         # nmf
-        train_matrix = self.prepare()
-        (nmf_result, nmf_known_result) = self.nmf(train_matrix)
-        # rec based on hot
-        rec_list_hot = self.rec_based_on_hot(6, 3, sim_news_hot)
+        self.train_matrix = np.load('train_user_news.npy')
+        (nmf_result, nmf_known_result) = self.nmf(self.train_matrix)
 
-        # df_predict = pd.DataFrame()
+        # similarity based on title
+        self.df_train_title = pd.read_csv('train_title.csv', encoding='utf-8')
+        # sim_news_rec = self.rec_based_on_title()
+        sim_news_hot = self.rec_based_on_title(self.df_test_title, self.df_train_title)
+
+        # rec based on hot
+        self.df_train_news_click = pd.read_csv('train_news_hot.csv')
+        rec_list_hot = self.rec_based_on_hot(sim_news_hot)
+
+        # begin to recommend to all test users
         for i in range(n_test_user):
             rec_list = []
             index_user = self.df_train_user[self.df_train_user == self.df_test_user[i]]     # series: the index of fit samples in train
+
             if not index_user.empty:    # old user
                 index_user = index_user.reset_index()['index'][0]   # le in train
-                k_old = 6
-                k_hot = 3
+                # old news
                 rec_list_old = []
                 rec_list_old_score = nmf_result[index_user]  # nmf score
                 n_cf = len(rec_list_old_score)
                 df_rec_list_old = pd.DataFrame(rec_list_old_score, columns=['similarity'])
                 df_rec_list_old['index'] = list(range(df_rec_list_old.shape[0]))
                 df_rec_list_old.sort_values(by=['similarity'], inplace=True, ascending=False)
-                for j in range(min(n_cf, k_old)):  # k_old篇旧文章
+                for j in range(min(n_cf, self.k_old)):  # k_old篇旧文章
                     rec_list_old.append(self.df_train_news[df_rec_list_old.index[j]])  # le to news_id
                 rec_list.extend(rec_list_old)
+
                 # new news
                 rec_list_new = []
                 rec_list_new_score = nmf_known_result[index_user]    # nmf score
                 n_clicked = len(rec_list_new_score)
                 df_rec_list_new = pd.DataFrame(rec_list_new_score, columns=['similarity'])
                 df_rec_list_new['index'] = list(range(df_rec_list_new.shape[0]))        # add le
-                # print(df_rec_list_new.shape[0])
                 df_rec_list_new.sort_values(by=['similarity'], inplace=True, ascending=False)
-                n_new_per_old = int((self.k_total - k_old) / k_hot)     # num of rec new news per old news
-                for j in range(min(n_clicked, k_hot)):  # k_hot篇已读旧文章
-                    # print('%d:%d'%(min(n_clicked, k_hot), j))
-                    # print('%d:%d'%(df_rec_list_new.index[j], len(sim_news_hot)))  # error: 4934:4897
+                n_new_per_old = int((self.k_total - self.k_old) / self.k_hot)     # num of rec new news per old news
+                for j in range(min(n_clicked, self.k_hot)):  # k_hot篇已读旧文章
                     new_on_old_score = sim_news_hot[df_rec_list_new.index[j]]    # [(le, score)]
                     n_sim = len(new_on_old_score)
                     df_new_on_old = pd.DataFrame(new_on_old_score, columns=['index', 'similarity'])
                     df_new_on_old.sort_values(by='similarity', ascending=False, inplace=True)
                     for l in range(min(n_sim, n_new_per_old)):  # 每篇旧文章，推荐新文章
                         rec_list_new.append(self.df_train_news[df_new_on_old.index[l]])
-                # j = k_hot - 1
-                # new_on_old_score = sim_news_hot[df_rec_list_new.index[j]]   # [(le, score)]
-                # n_sim = len(new_on_old_score)
-                # df_new_on_old = pd.DataFrame(new_on_old_score, columns=['index', 'similarity'])
-                # df_new_on_old.sort_values(by='similarity', ascending=False, inplace=True)
-                # n_new_per_old = self.k_total - k_old - len(rec_list_new)
-                # for l in range(min(n_sim, n_new_per_old)):  # 最后一篇旧文章，推荐新文章
-                #     rec_list_new.append(self.df_test_news_id.news_id[df_new_on_old.index[l]])   # news_id in test
+                j = self.k_hot - 1
+                new_on_old_score = sim_news_hot[df_rec_list_new.index[j]]   # [(le, score)]
+                n_sim = len(new_on_old_score)
+                df_new_on_old = pd.DataFrame(new_on_old_score, columns=['index', 'similarity'])
+                df_new_on_old.sort_values(by='similarity', ascending=False, inplace=True)
+                n_new_per_old = self.k_total - self.k_old - len(rec_list_new)
+                for l in range(min(n_sim, n_new_per_old)):  # 最后一篇旧文章，推荐新文章
+                    rec_list_new.append(self.df_test_news_id.news_id[df_new_on_old.index[l]])   # news_id in test
                 rec_list.extend(rec_list_new)
 
                 # record to matrix
@@ -252,22 +259,7 @@ class RecNews:
 
 
 if __name__ == "__main__":
-    # df_data = pd.read_csv('%s/data/%s' % (root_dir, 'user_click_data.txt'), encoding='utf-8', delimiter="\t",
-    #                            names=["user_id", "news_id", "scan_time", "news_title", "content", "publish_time"],
-    #                            index_col=False)
-    # prepare user-news matrix
-    # prepare()
-    # train_matrix = np.load('user_news.npy')
-    # print (train_matrix)
 
-    # NMF
-    # nmf_rec = nmf(train_matrix)
-
-    # news similarity based on title
-    # rec_based_on_title()
-
-    # new user based on news similar to hot news
-    # recommendation()
-    rec = RecNews(20)
+    rec = RecNews(10, 8,1,6,1,1)
     print(rec.recommendation())
 
