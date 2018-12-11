@@ -56,7 +56,6 @@ if not os.path.exists('%s/data/train_original.csv'%root_dir) or \
     _404_original.to_csv('%s/data/404_original.csv'%root_dir, index=False)
     news_original.to_csv('%s/data/news_original.csv'%root_dir, index=False)
 
-
 '''
 数据清洗+jieba分词
 处理结果存在:ROOT_DIR/data/*_jieba.csv
