@@ -1,4 +1,4 @@
-*.model
+*.model*
 news_word.model
 news_doc.model
 news_doc.model.docvecs.vectors_docs.npy
