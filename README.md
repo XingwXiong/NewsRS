@@ -4,7 +4,10 @@
 
 ### Initialization
 ```
-pip3 install jieba,numpy,pandas,gensim  # or conda install ...
+$ pip3 install jieba,numpy,pandas,gensim
+# or conda install jieba,numpy,pandas,gensim
+# or pip3 install -r requirements.txt
+# or conda install --yes --file requirements.txt
 ```
 
 ```
