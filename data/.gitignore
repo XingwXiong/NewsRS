@@ -1,4 +1,4 @@
-user_click_data.txt
-train_original.csv
-train_jieba.csv
-
+/*
+!.gitignore
+!user_click_data.tar.gz
+!stopwords.txt
