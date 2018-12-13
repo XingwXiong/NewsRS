@@ -1,0 +1,116 @@
+\documentclass[UTF8]{article}
+
+%设置页边距
+\usepackage{geometry}
+\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}
+\usepackage{algorithm}  
+\usepackage{algpseudocode}  
+\usepackage{amsmath}  
+
+%插入代码
+\usepackage{titlesec}
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+    numbers=left,
+    numberstyle=\scriptsize,
+    keywordstyle=\color{red!80},
+    commentstyle=\color{red!50!green!50!blue!50}\bf,
+    frame=trbl,
+    rulesepcolor=\color{red!20!green!20!blue!20},
+    backgroundcolor=\color[RGB]{245,245,244},
+    escapeinside=``,
+    showstringspaces=false,
+    xleftmargin=5em,xrightmargin=5em,
+    aboveskip=1em,
+    framexleftmargin=2em,
+}
+%\begin{lstlisting}[language=C++]
+%\end{lstlisting}
+
+%设置中文
+\usepackage{ctex}
+\usepackage{tikz}
+\usepackage{fancybox}
+\begin{document}
+
+\title{推荐系统报告}
+\author{}
+\date{}
+\maketitle
+
+\tableofcontents
+
+\newpage
+\section{简介}
+	新闻推荐是指根据用户的点击记录，向用户推荐他们可能感兴趣的新闻。新闻推荐具有以下特点:(1)最近几天的新闻更可能被浏览，很少会有人去浏览很久以前的新闻，所以尽量推荐较近的新闻。(2)热点新闻更容易引人注意(3)相似的用户可能喜欢相似的新闻。
+\section{相关工作}
+\subsection{基于内容的推荐算法}
+	将与用户点击过的新闻相似性较高的其他新闻推荐给用户。对新闻和用户进行分析以建立属性特征，利用此特征为用户推荐最为相似的新闻，关键在于如何计算新闻和用户的相似度。
+	\begin{enumerate}{(1)}
+		\item 新闻特征提取:为每个新闻提取特征属性，比如表示为词向量。
+	\end{enumerate}
+	\begin{enumerate}{(2)}
+	\item 用户特征提取:利用用户的浏览记录为每个用户提取特征属性，比如利用用户浏览过的新闻词向量构造用户向量。
+	\end{enumerate}
+	\begin{enumerate}{(3)}
+	\item 为用户推荐与其相似度较高的新闻。
+	\end{enumerate}
+\subsection{协同过滤推荐算法}
+不需要额外获取分析用户或新闻的内容属特性，是基于用户历史行为数据进行推荐的算法。
+
+\subsubsection{基于用户的协同过滤算法}
+将与当前用户有相同偏好的其他用户所喜欢的新闻推荐给当前用户。
+	\begin{enumerate}{(1)}
+	\item 找到与目标用户喜好相似的邻居用户集合。
+\end{enumerate}
+\begin{enumerate}{(2)}
+	\item 在邻居用户集合中，为用户推荐其感兴趣的新闻。
+\end{enumerate}
+\subsubsection{基于物品的协同过滤算法}
+为用户推荐那些与他们之前喜欢的新闻相似的新闻。
+	\begin{enumerate}{(1)}
+	\item 根据用户历史行为数据，计算新闻间的相似度。
+\end{enumerate}
+\begin{enumerate}{(2)}
+	\item 利用用户行为和新闻间的相似度为用户生成推荐列表。
+\end{enumerate}
+\subsubsection{基于模型的协同过滤算法}
+User-Based 或 Item-Based 方法共有的缺点是资料稀疏，难以处理大数据量下的即时结果，
+因此发展出以模型为基础的协同过滤技术:先用历史数据训练得到一个模型，再用此模型进行预测。
+\subsection{混合模型推荐算法}
+	\begin{enumerate}{(1)}
+	\item 多个推荐算法独立运行，获取的多个推荐结果以一定的策略进行混合。
+\end{enumerate}
+	\begin{enumerate}{(2)}
+	\item 将前一个推荐方法产出的中间结果或者最终结果输出给后一个推荐方法。
+\end{enumerate}
+	\begin{enumerate}{(3)}
+	\item 使用多种推荐算法，将每种推荐算法计算过程中产生的相似度值通过权重相加，调整每个推荐算法相似度值的权重，以该混合相似度值为基础，选择出邻域集合，并结合邻域集合中的评估信息，得出最优的推荐结果。
+\end{enumerate}
+
+\section{方法}
+\subsection{svd}
+对于训练数据，构造用户-新闻矩阵A，将A分解为$USV^{T}$，其中U表示用户的主题分布，S表示奇异值，V表示新闻的主题分布。利用基于模型的协同过滤方法估计测试集:利用$USV^{T}$重建矩阵，并过滤掉已经评分的物品，对于每一行(一个用户)推荐值最大的几个新闻，对于从未在训练集中出现过的新用户推荐最近最热的新闻。
+\subsection{nmf}
+对于训练数据，构造用户-新闻矩阵V，将V分解为W×H，其中W表示用户的主题分布，H表示物品的主题分布。利用基于模型的协同过滤方法估计测试集，利用W×H重建矩阵，并过滤掉已经评分的物品，对于每一行(一个用户)推荐值最大的几个新闻，对于从未在训练集中出现过的新用户推荐最近最热的新闻。
+\section{实验}
+数据集共31天，将前20天作为训练集，后11天作为测试集。
+\subsection{SVD}
+
+svd效果:如果将后11天整体作为测试集，训练时间为19s，对于每个用户推荐10条新闻时总命中数为205；如果对于后11天每天进行推荐，比如利用前22天的数据预测第23天的数据，对于每个用户每天推荐10条新闻时总命中数为321。
+%[8, 8, 10, 10, 9, 11, 10, 10, 11, 11, 10]s
+
+svd优点:考虑用户与用户，文档与文档之间的相似关系，训练集无需对文本进行处理，比较快。
+
+svd缺点:冷启动，测试集中有过半的新闻未曾在训练集中出现过，svd无法对用户推荐这些新闻。
+
+可能改进:利用混合模型，综合考虑内容过滤和协同过滤。
+\subsection{nmf}
+nmf效果:如果将后11天整体作为测试集，训练时间为30s，对于每个用户推荐10条新闻时总命中数为270；如果对于后11天每天进行推荐，比如利用前22天的数据预测第23天的数据，对于每个用户每天推荐10条新闻时总命中数为317。
+%[21, 25, 50, 56, 61, 65, 60, 60, 61, 65, 66]
+
+nmf优缺点与svd相似。
+
+尝试改进:尝试结合nmf与tf-idf来处理新的新闻，未取得理想效果。
+\end{document}
