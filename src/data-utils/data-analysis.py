@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+'''
+    Author:         XingwXiong
+    Description:    Feature Analysis
+'''
 # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
