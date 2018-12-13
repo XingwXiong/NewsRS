@@ -11,10 +11,14 @@ from sklearn import preprocessing
 from sklearn.decomposition import NMF
 import heapq
 from sklearn.feature_extraction.text import TfidfVectorizer
+from datetime import datetime
+
+a=datetime.now()
 
 path=''
 train_data = pd.read_csv(path+'train.csv',encoding='utf-8')
 test_data = pd.read_csv(path+'test.csv',encoding='utf-8')
+
 n_users = train_data.usr_id.unique().shape[0]
 n_items = train_data.news_id.unique().shape[0]
 print(n_users)
@@ -35,8 +39,9 @@ for row in train_data.itertuples(index=True, name='Pandas'):
 print(train_data_matrix.sum())
 print(train_data_matrix.max())
 
+
 #SVD
-n_components=20
+n_components=30
 U,S,VT = svds(train_data_matrix, k=n_components)#用户主题分布，奇异值，物品主题分布
 S= np.diag(S)
 reconstruct_matrix=np.dot(np.dot(U, S), VT) 
@@ -44,7 +49,7 @@ filter_matrix = train_data_matrix < 1e-6
 svd_result=reconstruct_matrix* filter_matrix
 print(svd_result)
 #print(svd_result.max())
-
+'''
 #SVD feature
 
 #NMF
@@ -57,7 +62,7 @@ filter_matrix = train_data_matrix < 1e-6
 nmf_result=reconstruct_matrix*filter_matrix
 print(nmf_result)
 #print(nmf_result.max())
-
+'''
 train_data["usr_id"] = le_usr.inverse_transform(train_data["usr_id"])
 train_data["news_id"] = le_news.inverse_transform(train_data["news_id"])
 
@@ -81,12 +86,15 @@ def recommendNews(K,result_matrix):
     print(recommend)
     res={}
     for usr in test_data.usr_id.unique():
+        #res[usr]=hot_k
+        
         if(usr in train_data.usr_id.unique()):       
             tmp=le_usr.transform([usr])#usr_id变为矩阵行号0
             predict=recommend[tmp]
             res[usr]=predict
         else:
             res[usr]=hot_k
+            
     #print(res)
     
     cnt=0
@@ -94,5 +102,8 @@ def recommendNews(K,result_matrix):
         if test_data.iloc[i]['news_id'] in res[test_data.iloc[i]['usr_id']]:
             cnt=cnt+1
     print(cnt)
-recommendNews(10,nmf_result)
+#recommendNews(10,nmf_result)
 recommendNews(10,svd_result)
+
+b=datetime.now()
+print((b-a).seconds)
