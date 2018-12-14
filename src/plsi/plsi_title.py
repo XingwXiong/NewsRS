@@ -32,6 +32,10 @@ class RecNews:
         self.k_old = k_old
         self.k_hot = min(k_old, self.k_total - k_old)
         self.base = base    # 1-title 2-content
+        if base == 1:
+            self.name = 'word_title'
+        elif base == 2:
+            self.name = 'word_content'
 
     def prepare(self):
         # train user-news matrix
@@ -46,8 +50,6 @@ class RecNews:
         self.df_train_news.sort_values(inplace=True)
         self.df_train_news.reset_index(drop=True, inplace=True)
         self.df_train_news.to_csv('train_news_id.csv', index=False)
-        self.df_u = pd.read_csv('train_users_id.csv', names=['id'])
-        self.df_u.sort_values(inplace=True, by=['id'])
         train_matrix = to_matrix(self.df_train)
         np.save("train_user_news", train_matrix)
 
@@ -75,7 +77,7 @@ class RecNews:
 
     def rec_based_on_title(self, df_train_title, df_test_title):
 
-        corpora_documents = df_train_title['word_title'].values.tolist()
+        corpora_documents = df_train_title[self.name].values.tolist()
         corpora_documents = [[j for j in i.split(' ')] for i in corpora_documents]
 
         dictionary = corpora.Dictionary(corpora_documents)
@@ -97,7 +99,7 @@ class RecNews:
         # similarity = similarities.Similarity.load('similarity.index')
 
         # rec on test set
-        corpora_documents_test = df_test_title['word_title'].values.tolist()
+        corpora_documents_test = df_test_title[self.name].values.tolist()
         corpora_documents_test = [[j for j in i.split(' ')] for i in corpora_documents_test]
 
         corpus_test = [dictionary.doc2bow(text) for text in corpora_documents_test]
@@ -148,7 +150,7 @@ class RecNews:
                                           usecols=[1, self.base + 2])
         self.df_train_title.drop_duplicates(inplace=True, keep='first')
         self.df_train_title.sort_values(by='news_id', inplace=True)
-        self.df_train_title.reset_index(inplace=True)
+        self.df_train_title.reset_index(inplace=True,drop=True)
         self.df_train_title.to_csv('train_title.csv', index=False)
 
         # nmf data preparation
@@ -260,6 +262,6 @@ class RecNews:
 
 if __name__ == "__main__":
 
-    rec = RecNews(10, 8,1,6,1,1)
+    rec = RecNews(10, 5,2,6,1,1)
     print(rec.recommendation())
 
