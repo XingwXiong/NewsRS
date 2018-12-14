@@ -2,3 +2,4 @@
 !.gitignore
 !user_click_data.tar.gz
 !stopwords.txt
+!news_jieba.csv

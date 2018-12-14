@@ -13,7 +13,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 root_dir = '../../'
-K = 10
+K = 10 # 10, 40, 100
 
 # Reading Data
 data = pd.read_csv('%s/data/%s' % (root_dir, 'clean_user_click_data.csv'), encoding='utf-8')
@@ -72,7 +72,7 @@ def recommend(usr_id, k=K):
 logging.info('===============================')
 hit_cnt = 0
 test = pd.read_csv('%s/data/clean_test_data.csv' % root_dir)
-test = test.sample(n=10, replace=False)
+# test = test.sample(n=10, replace=False)
 for i in range(test.shape[0]):
     query = test.iloc[i]
     r_set = recommend(test.iloc[i]['usr_id'])
@@ -81,8 +81,8 @@ for i in range(test.shape[0]):
         hit_cnt = hit_cnt + 1
         print("HHHHHHHHHHHHHHHHHHIIIIIIIIIIIIIIIIIITTTTTTTTTTTTTTTTTTTT: %d/%d" % (hit_cnt, i+1))
         logging.info('#{}:'.format(i+1))
-        logging.info("[usr_id: {}, news_id:{}, new_title:{}]".format(query['usr_id'], query['news_id'], news_title_mp[query['news_id']]))
+        logging.info("测试集中的记录[usr_id: {}, news_id:{}, new_title:{}]".format(query['usr_id'], query['news_id'], news_title_mp[query['news_id']]))
         for r in r_set:
-            logging.info("[news_id:{}, new_title:{}]".format(r, news_title_mp[r]))
+            logging.info("系统推荐的新闻[news_id:{}, new_title:{}]".format(r, news_title_mp[r]))
 logging.info("[tot: %d, hit: %d]" % (test.shape[0], hit_cnt))
 
