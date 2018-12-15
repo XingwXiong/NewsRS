@@ -55,6 +55,8 @@ news = news[news_filter]
 news_vecs = news_vecs[news_filter]
 
 # Build KNN
+tm_1 = time.time()
+
 nbrs = NearestNeighbors(n_neighbors=K, algorithm='auto').fit(X=news_vecs, y=news['news_id'].tolist())
 #nbrs = NearestNeighbors(n_neighbors=K, algorithm='auto').fit(X=news_vecs)
 
@@ -69,10 +71,12 @@ def recommend(usr_id, k=K):
     else:
         return hotest_k 
 
+tm_2 = time.time()
+
 logging.info('===============================')
 hit_cnt = 0
 test = pd.read_csv('%s/data/clean_test_data.csv' % root_dir)
-# test = test.sample(n=10, replace=False)
+#test = test.sample(n=10, replace=False)
 for i in range(test.shape[0]):
     query = test.iloc[i]
     r_set = recommend(test.iloc[i]['usr_id'])
@@ -85,4 +89,7 @@ for i in range(test.shape[0]):
         for r in r_set:
             logging.info("系统推荐的新闻[news_id:{}, new_title:{}]".format(r, news_title_mp[r]))
 logging.info("[tot: %d, hit: %d]" % (test.shape[0], hit_cnt))
+tm_3 = time.time()
 
+logging.info('training: {}'.format(tm_2 - tm_1))
+logging.info('testing : {}'.format(tm_3 - tm_2))
