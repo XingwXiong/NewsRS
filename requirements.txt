@@ -213,8 +213,6 @@ python-libarchive-c=2.8=py36_6
 python.app=2=py36_9
 pytz=2018.7=py36_0
 pywavelets=1.0.1=py36h1d22016_0
-pyyaml=3.13=py36h1de35cc_0
-pyzmq=17.1.2=py36h1de35cc_0
 qt=5.9.6=h45cd832_2
 qtawesome=0.5.2=py36_0
 qtconsole=4.4.2=py36_0
